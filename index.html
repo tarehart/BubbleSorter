@@ -139,6 +139,7 @@
             this.onVictory = this.onVictory.bind(this);
             this.keyPress = this.keyPress.bind(this);
             this.handleSnackClose = this.handleSnackClose.bind(this);
+            this.skipMatch = this.skipMatch.bind(this);
         }
 
         numAlreadyPlayedDuringIteration = 0;
@@ -158,9 +159,18 @@
             }
         }
 
-        handleSnackClose = (event, reason) => {
+        handleSnackClose(event, reason) {
             this.setState({ showSnack: false });
-        };
+        }
+
+        skipMatch() {
+            for (let i = 0; i < this.state.bots.length; i++) {
+                if (this.state.bots[i].playing) {
+                    this.advance(i);
+                    break;
+                }
+            }
+        }
 
         pastResults = {};
 
@@ -185,7 +195,6 @@
         onVictory(index, bot) {
 
             let loser;
-            const winner = bot;
             if (bot.playing === "below") {
                 // Need to swap the indices!
                 loser = this.state.bots[index - 1];
@@ -195,13 +204,17 @@
                 loser = this.state.bots[index + 1];
             }
 
+            this.recordResult(bot, loser);
+
             // Now move to the next match
             const upperIndex = bot.playing === "below" ? index - 1 : index;
+            this.advance(upperIndex)
+        }
 
-            winner.playing = false;
-            loser.playing = false;
+        advance(upperIndex) {
 
-            this.recordResult(winner, loser);
+            this.state.bots[upperIndex].playing = false;
+            this.state.bots[upperIndex + 1].playing = false;
 
             const numBots = this.state.bots.length;
 
@@ -238,8 +251,6 @@
 
             this.forceUpdate();
         }
-
-
 
         beginBubbleSort() {
             if (this.state.bots.length < 2) {
@@ -284,6 +295,7 @@
                                 </CardContent>
                                 <CardActions>
                                     <Button variant="contained" color="primary" onClick={this.beginBubbleSort}>Begin Bubble Sort</Button>
+                                    <Button onClick={this.skipMatch}>Skip</Button>
                                 </CardActions>
                             </Card>
                         </Grid>
