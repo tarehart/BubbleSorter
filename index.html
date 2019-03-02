@@ -115,12 +115,29 @@
 
     class ResultRow extends React.Component {
 
+        constructor(props) {
+            super(props);
+
+            // This binding is necessary to make `this` work in the callback
+            this.winnerScoreChange = this.winnerScoreChange.bind(this);
+            this.loserScoreChange = this.loserScoreChange.bind(this);
+        }
+
+        winnerScoreChange(e) {
+            this.props.result.winnerScore = e.target.value;
+        }
+
+        loserScoreChange(e) {
+            this.props.result.loserScore = e.target.value;
+        }
+
         render() {
             const idx = this.props.idx;
             const result = this.props.result;
             return (
                 <li key={idx}>{result.winner.name} beats {result.loser.name}
-                <TextField className="scoreNum" type="number"/> to <TextField className="scoreNum" type="number"/></li>
+                <TextField value={result.winnerScore} onChange={this.winnerScoreChange} className="scoreNum" type="number"/> to
+                    <TextField value={result.loserScore} onChange={this.loserScoreChange} className="scoreNum" type="number"/></li>
             );
         }
     }
@@ -130,7 +147,7 @@
         constructor(props) {
             super(props);
 
-            this.state = { bots: [], pendingBotName: "", resultList: [], showSnack: false, snackMessage: "" };
+            this.state = { bots: [], pendingBotName: "", matchLog: [], showSnack: false, snackMessage: "" };
 
             // This binding is necessary to make `this` work in the callback
             this.handleAddBot = this.handleAddBot.bind(this);
@@ -140,6 +157,9 @@
             this.keyPress = this.keyPress.bind(this);
             this.handleSnackClose = this.handleSnackClose.bind(this);
             this.skipMatch = this.skipMatch.bind(this);
+            this.saveState = this.saveState.bind(this);
+            this.loadState = this.loadState.bind(this);
+            this.handleSelectedFile = this.handleSelectedFile.bind(this);
         }
 
         numAlreadyPlayedDuringIteration = 0;
@@ -172,24 +192,24 @@
             }
         }
 
-        pastResults = {};
+        comparisonHash = {};
 
         buildKey(bot1, bot2) {
-            return bot1.name > bot2.name ? bot1.name + bot2.name : bot2.name + bot1.name;
+            return bot1.name > bot2.name ? bot1.name + "##" + bot2.name : bot2.name + "##" + bot1.name;
         }
 
         recordResult(winner, loser) {
             const key = this.buildKey(winner, loser);
-            if (!this.pastResults[key]) {
+            if (!this.comparisonHash[key]) {
                 const result = {winner: winner, loser: loser};
-                this.pastResults[key] = result;
-                this.state.resultList.push(result);
+                this.comparisonHash[key] = result;
+                this.state.matchLog.push(result);
             }
         }
 
         getPastResult(bot1, bot2) {
             const key = this.buildKey(bot1, bot2);
-            return this.pastResults[key];
+            return this.comparisonHash[key];
         }
 
         onVictory(index, bot) {
@@ -273,6 +293,35 @@
             this.forceUpdate();
         }
 
+        fileReader = null;
+
+        saveState() {
+            const data = {bots: this.state.bots, comparisonHash: this.comparisonHash, matchLog: this.state.matchLog};
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], {type: "application/json"});
+            const url  = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.download    = "bubble-sort-state.json";
+            a.href        = url;
+            a.textContent = "Save State";
+
+            a.click();
+        }
+
+        loadState() {
+            const content = this.fileReader.result;
+            const state = JSON.parse(content);
+            this.comparisonHash = state.comparisonHash;
+            this.setState({bots: state.bots, matchLog: state.matchLog});
+        }
+
+        handleSelectedFile(file) {
+            this.fileReader = new FileReader();
+            this.fileReader.onloadend = this.loadState;
+            this.fileReader.readAsText(file);
+        }
+
         render() {
 
             return (
@@ -298,6 +347,13 @@
                                     <Button onClick={this.skipMatch}>Skip</Button>
                                 </CardActions>
                             </Card>
+                            <br /><br />
+                            <Button onClick={this.saveState}>Save State</Button>
+                            <Button component="label">
+                                Load State
+                                <Input type="file" onChange={e => this.handleSelectedFile(e.target.files[0])} style={{ display: "none" }}/>
+                            </Button>
+
                         </Grid>
                         <Grid item>
                             <Card>
@@ -306,7 +362,7 @@
                                         Results
                                     </Typography>
                                     <ol className="resultsList">
-                                        {this.state.resultList.map((item, idx) => (
+                                        {this.state.matchLog.map((item, idx) => (
                                             <ResultRow idx={idx} result={item} />
                                         ))}
                                     </ol>
@@ -315,7 +371,7 @@
                         </Grid>
                     </Grid>
                     <Snackbar
-                        anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+                        anchorOrigin={{vertical: 'bottom', horizontal: 'center'}}
                         open={this.state.showSnack}
                         autoHideDuration={5000}
                         message={this.state.snackMessage}
