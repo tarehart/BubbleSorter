@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Bubblesort Helper</title>
+
+    <script src="https://unpkg.com/react@latest/umd/react.development.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@latest/umd/react-dom.development.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@material-ui/core/umd/material-ui.development.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/babel-standalone@latest/babel.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+</head>
+
+<body>
+
+<div class="page-center-div">
+
+    <div id="react_container"></div>
+
+</div>
+
+
+<!-- Load React. -->
+<!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+<script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+<script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+
+<!-- Load our React component. -->
+<script type="text/babel">
+
+    'use strict';
+
+    const {
+        Button,
+        Input,
+        Card,
+        CardActions,
+        CardContent,
+        colors,
+        createMuiTheme,
+        CssBaseline,
+        Dialog,
+        Grid,
+        DialogActions,
+        DialogContent,
+        DialogContentText,
+        DialogTitle,
+        Icon,
+        MuiThemeProvider,
+        Paper,
+        Snackbar,
+        TextField,
+        Typography,
+        withStyles,
+    } = window['material-ui'];
+
+
+    const theme = createMuiTheme({
+        palette: {
+            primary: {
+                light: colors.purple[300],
+                main: colors.purple[500],
+                dark: colors.purple[700],
+            },
+            secondary: {
+                light: colors.green[300],
+                main: colors.green[500],
+                dark: colors.green[700],
+            },
+        },
+        typography: {
+            useNextVariants: true,
+        },
+    });
+
+    const styles = theme => ({});
+
+
+    class BotRow extends React.Component {
+
+        render() {
+
+            const idx = this.props.idx;
+            const bot = this.props.bot;
+
+            const buttonArea = bot.playing ? (<Button variant="outlined" color="secondary" onClick={() => {this.props.onVictory(idx, bot);}}>{bot.name}</Button>) : bot.name;
+            const className = bot.playing || '';
+            return (
+                <li className={className}>{buttonArea}</li>
+            );
+        }
+    }
+
+    class BotList extends React.Component {
+
+        render() {
+            const self = this;
+            const itemsMarkup = this.props.bots.map(function(bot, idx) {
+                return (
+                    <BotRow bot={bot} idx={idx} key={idx} onVictory={self.props.onVictory} />
+                );
+            });
+
+            return (
+                <ol>{itemsMarkup}</ol>
+            );
+        }
+    }
+
+    class ResultRow extends React.Component {
+
+        render() {
+            const idx = this.props.idx;
+            const result = this.props.result;
+            return (
+                <li key={idx}>{result.winner.name} beats {result.loser.name}
+                <TextField className="scoreNum" type="number"/> to <TextField className="scoreNum" type="number"/></li>
+            );
+        }
+    }
+
+    class BubbleSort extends React.Component {
+
+        constructor(props) {
+            super(props);
+
+            this.state = { bots: [], pendingBotName: "", resultList: [], showSnack: false, snackMessage: "" };
+
+            // This binding is necessary to make `this` work in the callback
+            this.handleAddBot = this.handleAddBot.bind(this);
+            this.handleChange = this.handleChange.bind(this);
+            this.beginBubbleSort = this.beginBubbleSort.bind(this);
+            this.onVictory = this.onVictory.bind(this);
+            this.keyPress = this.keyPress.bind(this);
+            this.handleSnackClose = this.handleSnackClose.bind(this);
+        }
+
+        numAlreadyPlayedDuringIteration = 0;
+
+        handleAddBot() {
+            this.state.bots.push({name: this.state.pendingBotName, playing: null});
+            this.setState({pendingBotName: ""});
+        }
+
+        handleChange(event) {
+            this.setState({pendingBotName: event.target.value});
+        }
+
+        keyPress(e){
+            if(e.keyCode === 13){
+                this.handleAddBot()
+            }
+        }
+
+        handleSnackClose = (event, reason) => {
+            this.setState({ showSnack: false });
+        };
+
+        pastResults = {};
+
+        buildKey(bot1, bot2) {
+            return bot1.name > bot2.name ? bot1.name + bot2.name : bot2.name + bot1.name;
+        }
+
+        recordResult(winner, loser) {
+            const key = this.buildKey(winner, loser);
+            if (!this.pastResults[key]) {
+                const result = {winner: winner, loser: loser};
+                this.pastResults[key] = result;
+                this.state.resultList.push(result);
+            }
+        }
+
+        getPastResult(bot1, bot2) {
+            const key = this.buildKey(bot1, bot2);
+            return this.pastResults[key];
+        }
+
+        onVictory(index, bot) {
+
+            let loser;
+            const winner = bot;
+            if (bot.playing === "below") {
+                // Need to swap the indices!
+                loser = this.state.bots[index - 1];
+                this.state.bots[index - 1] = bot;
+                this.state.bots[index] = loser;
+            } else {
+                loser = this.state.bots[index + 1];
+            }
+
+            // Now move to the next match
+            const upperIndex = bot.playing === "below" ? index - 1 : index;
+
+            winner.playing = false;
+            loser.playing = false;
+
+            this.recordResult(winner, loser);
+
+            const numBots = this.state.bots.length;
+
+            let nextAbove;
+            let nextBelow;
+
+            if (upperIndex === 0) {
+                // We've reached the top, time to jump back to the bottom (or decide we're done)
+                if (this.numAlreadyPlayedDuringIteration === this.state.bots.length - 1) {
+                    // TODO: modify state to indicate completion!
+                    this.setState({showSnack: true, snackMessage: "Bubble sort complete!"});
+                    return;
+                }
+
+                nextBelow = this.state.bots[numBots - 1];
+                nextAbove = this.state.bots[numBots - 2];
+                this.numAlreadyPlayedDuringIteration = 0;
+            } else {
+                nextAbove = this.state.bots[upperIndex - 1];
+                nextBelow = this.state.bots[upperIndex];
+            }
+
+            nextAbove.playing = "above";
+            nextBelow.playing = "below";
+
+            const pastResult = this.getPastResult(nextAbove, nextBelow);
+            if (pastResult) {
+                const pastWinner = pastResult.winner;
+                this.numAlreadyPlayedDuringIteration += 1;
+                this.onVictory(this.state.bots.indexOf(pastWinner), pastWinner);
+            } else {
+                this.setState({showSnack: true, snackMessage: "Click the winner of " + nextBelow.name + " vs " + nextAbove.name})
+            }
+
+            this.forceUpdate();
+        }
+
+
+
+        beginBubbleSort() {
+            if (this.state.bots.length < 2) {
+                this.setState({showSnack: true, snackMessage: "Need at least 2 bots!"});
+                return;
+            }
+
+            const lastIdx = this.state.bots.length - 1;
+            const nextIdx = lastIdx - 1;
+
+            const nextBelow = this.state.bots[lastIdx];
+            const nextAbove = this.state.bots[nextIdx];
+
+            nextBelow.playing = "below";
+            nextAbove.playing = "above";
+
+
+            this.setState({showSnack: true, snackMessage: "Click the winner of " + nextBelow.name + " vs " + nextAbove.name})
+
+            this.forceUpdate();
+        }
+
+        render() {
+
+            return (
+                <MuiThemeProvider theme={theme}>
+
+                    <CssBaseline />
+                    <Grid container spacing={24}>
+                        <Grid item>
+                            <Card>
+                                <CardContent>
+                                    <Grid container
+                                        direction="row"
+                                        justify="center"
+                                        alignItems="center">
+                                        <TextField label="Bot Name" variant="outlined" value={this.state.pendingBotName}
+                                                   onChange={this.handleChange} onKeyDown={this.keyPress} />
+                                        <Button onClick={this.handleAddBot} variant="contained" style={{marginLeft:"10px"}}>Add Bot</Button>
+                                    </Grid>
+                                    <BotList bots={this.state.bots} onVictory={this.onVictory} />
+                                </CardContent>
+                                <CardActions>
+                                    <Button variant="contained" color="primary" onClick={this.beginBubbleSort}>Begin Bubble Sort</Button>
+                                </CardActions>
+                            </Card>
+                        </Grid>
+                        <Grid item>
+                            <Card>
+                                <CardContent>
+                                    <Typography variant="h6">
+                                        Results
+                                    </Typography>
+                                    <ol className="resultsList">
+                                        {this.state.resultList.map((item, idx) => (
+                                            <ResultRow idx={idx} result={item} />
+                                        ))}
+                                    </ol>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    </Grid>
+                    <Snackbar
+                        anchorOrigin={{vertical: 'top', horizontal: 'center'}}
+                        open={this.state.showSnack}
+                        autoHideDuration={5000}
+                        message={this.state.snackMessage}
+                        onClose={this.handleSnackClose}
+                        />
+                </MuiThemeProvider>
+            );
+        }
+    }
+
+
+
+    const App = withStyles(styles)(BubbleSort);
+    const domContainer = document.querySelector('#react_container');
+    ReactDOM.render(<App/>, domContainer);
+
+</script>
+
+<style type="text/css">
+
+    body {
+        padding: 24px;
+        color: rgba(0, 0, 0, 0.87);
+        font-size: 1rem;
+        font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+        font-weight: 400;
+        line-height: 1.5;
+        letter-spacing: 0.00938em;
+    }
+
+    .above button, .below button {
+        margin: 2px 0;
+    }
+
+    .scoreNum {
+        width: 30px;
+        margin-left: 8px;
+        top: -5px;
+    }
+
+</style>
+
+</body>
+</html>
