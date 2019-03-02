@@ -118,6 +118,8 @@
         constructor(props) {
             super(props);
 
+            this.state = {winnerScore: props.result.winnerScore || 0, loserScore: props.result.loserScore || 0};
+
             // This binding is necessary to make `this` work in the callback
             this.winnerScoreChange = this.winnerScoreChange.bind(this);
             this.loserScoreChange = this.loserScoreChange.bind(this);
@@ -125,10 +127,12 @@
 
         winnerScoreChange(e) {
             this.props.result.winnerScore = e.target.value;
+            this.setState({winnerScore: e.target.value});
         }
 
         loserScoreChange(e) {
             this.props.result.loserScore = e.target.value;
+            this.setState({loserScore: e.target.value});
         }
 
         render() {
@@ -136,8 +140,8 @@
             const result = this.props.result;
             return (
                 <li key={idx}>{result.winner.name} beats {result.loser.name}
-                <TextField value={result.winnerScore} onChange={this.winnerScoreChange} className="scoreNum" type="number"/> to
-                    <TextField value={result.loserScore} onChange={this.loserScoreChange} className="scoreNum" type="number"/></li>
+                <TextField value={this.state.winnerScore} onChange={this.winnerScoreChange} className="scoreNum" type="number"/> to
+                    <TextField value={this.state.loserScore} onChange={this.loserScoreChange} className="scoreNum" type="number"/></li>
             );
         }
     }
